@@ -1,101 +1,77 @@
 # Created for Queen's University CISC352 Assignment 2 part 2
 
-INFINITY = 1000000
-
-# Open input file alphabeta.txt
-
-# Read input and put into data structure..
-# single whitespace separates the two sets..
-# multiple graphs separated by blank newline
-# set one is {(NODE1,MIN),(NODE2,MAX)}
-# set two is {(NODE1,NODE2)}
-# no order given to the first input set, except that it will start with the root node
-# edges are listed in left-to-right top-to-bottom order
-
-# Node as a class?
-# Attributes: edges, MIN/MAX, ptrs to children, ptrs to parents(?) --> no, recursion takes care of that
-# is_child attribute OR child class is child
-#
-
-# Write output to alphabeta_out.txt
-# output the score and number of leaf nodes examined
-# Graph n: Score: X; Leaf Nodes Examined: Y
+INFINITY = 1000000  # arbitrarily high value
+node_dict = {}  # global dictionary of <node_name : node_object> pairs
 
 
 class Node:
     def __init__(self, idx, ismax):
         self.name = idx  # identification string
-        self.isMax = ismax
+        self.isMax = ismax  # boolean to distinguish MAX and MIN
         self.children = []  # list of names of each child node
 
-node_dict = {}  # dictionary of node objects
 
 def main():
-
-    # Parse the input file
-    try:
+    try:  # Parse the input file
         with open("alphabeta.txt", 'r') as infile:
             graphs = infile.read().split('\n\n')  # list of all graphs in file
     except IOError:
         print("Error parsing alphabeta.txt")
 
-    g = graphs[1]
-    g = g.split()
-    nodes = g[0][2:-2].split('),(')  # list of NAME,MAX strings
-    root_name = ((nodes[0]).split(','))[0]
-    edges = g[1][2:-2].split('),(')  # list of PARENT,CHILD strings
-    # print(nodes)
-    # print(edges)
+    for i in range(len(graphs)):  # run the pruning for each graph in the file
+        g = graphs[i].split()  # split the string into two sets using whitespace
+        nodes = g[0][2:-2].split('),(')  # list of "NAME,MAX" strings
+        root_name = ((nodes[0]).split(','))[0]  #
+        edges = g[1][2:-2].split('),(')  # list of "PARENT,CHILD" strings
 
-    # Create node objects for each item in list
-    for n in nodes:
-        n = n.split(',')
-        name = n[0]
-        minmax = n[1]
-        # print name
-        # print minmax
-        node_dict[name] = Node(name, minmax)
+        for n in nodes:  # Create object for each node in list
+            n = n.split(',')
+            name = n[0]
+            ismax = n[1] == "MAX"
+            node_dict[name] = Node(name, ismax)  # add node object to dictionary
 
-    # Add names of child nodes
-    for e in edges:
-        e = e.split(',')
-        parent = e[0]
-        child = e[1]
-        node_dict[parent].children.append(child)
+        for e in edges:  # add children info to nodes
+            e = e.split(',')
+            parent = e[0]
+            child = e[1]
+            node_dict[parent].children.append(child)  # add child names to parent object
 
-    # for nd in node_dict.values():
-    #     print(nd.name)
-    #     print(nd.children)
+        score, leaf_count = alphabeta(root_name, -INFINITY, INFINITY, 0)
 
-    ret = alphabeta(root_name, -INFINITY, INFINITY)
-    print(ret)
+        try:  # write the results to the output file
+            with open("alphabeta_out.txt", 'a') as outfile:
+                outfile.write("Graph %i: Score: %i; Leaf Nodes Examined: %i\n" % (i+1, score, leaf_count))
+        except IOError:
+            print("Error writing to alphabeta_out.txt")
+    return
 
 
 # Returns optimal value for current player
-def alphabeta(name, alpha, beta):
-    # print("ALPHABETA")
+def alphabeta(name, alpha, beta, leaf_ctr):
     if name.isdigit():
-        print("Leaf!!: " + name)
-        return float(name)
+        # print("Found leaf " + name)
+        return float(name), leaf_ctr+1
     else:
+        # print("On node: " + name)
         node = node_dict[name]
         if node.isMax:
             best = -INFINITY
             for child in node.children:
-                value = alphabeta(child, alpha, beta)
+                value, leaf_ctr = alphabeta(child, alpha, beta, leaf_ctr)
                 best = max(best, value)
                 alpha = max(alpha, best)
                 if beta <= alpha:
                     break
-            return best
+            return best, leaf_ctr
         else:
             best = INFINITY
             for child in node.children:
-                value = alphabeta(child, alpha, beta)
+                value, leaf_ctr = alphabeta(child, alpha, beta, leaf_ctr)
                 best = min(best, value)
                 beta = min(beta, best)
                 if beta <= alpha:
                     break
-            return best
+            return best, leaf_ctr
+
 
 main()
